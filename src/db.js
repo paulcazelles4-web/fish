@@ -1,7 +1,12 @@
 const { Pool } = require("pg");
 
+const connectionString = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("Missing NEON_DATABASE_URL. Add your Neon PostgreSQL connection string to the environment.");
+}
+
 const pool = new Pool({
-  connectionString: process.env.NEON_DATABASE_URL || process.env.DATABASE_URL,
+  connectionString,
   // Neon requires TLS; use the pooled connection string for long-running bot workloads.
   ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
   max: Number(process.env.DB_POOL_MAX || 10),
