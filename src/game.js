@@ -276,8 +276,8 @@ async function collectionCommand(message) {
       { name: "DISCOVERY PROGRESS", value: "**" + found.size + " / " + fish.length + "** species\n" + progressBar(found.size, fish.length) },
       { name: "SPECIES INDEX", value: lines.join("\n") }
     )
-    .setFooter({ text: "Undiscovered species are hidden in the depths" });
-  return message.reply({ embeds: [embed] });
+    .setFooter({ text: "Select any species below to view its photo and details" });
+  return message.reply({ embeds: [embed], components: [fishGuideMenu()] });
 }
 
 const HELP_CATEGORIES = {
