@@ -38,8 +38,26 @@ const commands = new Map([
   ["collection", message => game.collectionCommand(message)],
   ["market", (message, args) => trading.marketCommand(message, args)],
   ["trade", (message, args) => trading.tradeCommand(message, args)],
-  ["help", message => message.reply({ embeds: [game.helpEmbed()] })]
+  ["help", message => message.reply({ embeds: [game.helpEmbed()], components: [game.helpMenu()] })]
 ]);
+
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isStringSelectMenu()) return;
+  try {
+    if (interaction.customId === "fish_help_category") {
+      await interaction.update({ embeds: [game.helpEmbed(interaction.values[0])], components: [game.helpMenu()] });
+    } else if (interaction.customId === "fish_guide_select") {
+      const species = require("./data/fish").fish.find(item => item.id === interaction.values[0]);
+      if (!species) return interaction.reply({ content: "That species could not be found.", ephemeral: true });
+      await interaction.update({ embeds: [game.fishDetailEmbed(species)], components: [game.fishGuideMenu()] });
+    }
+  } catch (error) {
+    console.error("Select menu interaction failed:", error);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: "Something went wrong while opening that menu.", ephemeral: true }).catch(() => {});
+    }
+  }
+});
 
 client.once("ready", () => {
   console.log("🐟 " + client.user.tag + " is online. Prefix: " + prefix);
