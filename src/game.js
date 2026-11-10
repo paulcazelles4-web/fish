@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require("discord.js");
 const { pool, ensurePlayer } = require("./db");
 const { weightedFish, rarityColors, fish } = require("./data/fish");
 const { rods } = require("./data/rods");
@@ -65,6 +65,7 @@ async function fishCommand(message) {
     .setColor(rarityColors[caught.rarity])
     .setTitle("🎣 Fish caught!")
     .setDescription("You reeled in a **" + caught.name + "**!")
+    .setImage(caught.image)
     .addFields(
       { name: "Rarity", value: caught.rarity, inline: true },
       { name: "Estimated value", value: coins(value), inline: true },
@@ -279,23 +280,46 @@ async function collectionCommand(message) {
   return message.reply({ embeds: [embed] });
 }
 
-function helpEmbed() {
-  return baseEmbed("FISH BOT  /  FIELD GUIDE",
-    "A little ocean adventure, built around collecting, upgrading and trading.\n\n" +
-    "**GET STARTED**\n**!fish** Cast your line  ·  **!daily** Claim your reward  ·  **!profile** View your stats",
-    BANNERS.coast)
+const HELP_CATEGORIES = {
+  getting_started: { label: "Getting started", emoji: "🎣", description: "Your first steps in the ocean.", commands: [["!fish", "Cast your line and catch a random fish."], ["!daily", "Claim your daily coin reward."], ["!profile [@user]", "View your angler profile."], ["!help", "Open this interactive command guide."]] },
+  fishing: { label: "Fishing & collection", emoji: "🐟", description: "Catch, collect and discover rare species.", commands: [["!fish", "Catch a fish (30-second cooldown)."], ["!inventory", "View your latest catches and locked items."], ["!collection", "Open the fish field guide."], ["!rod", "Check your equipped fishing rod."]] },
+  economy: { label: "Coins & shop", emoji: "🪙", description: "Earn coins and upgrade your equipment.", commands: [["!balance", "Check your wallet."], ["!daily", "Claim your daily reward."], ["!sell all", "Sell every eligible catch."], ["!sell <fish name>", "Sell matching eligible catches."], ["!shop", "Browse fishing rods."], ["!buy <rod id>", "Purchase a fishing rod."], ["!equip <rod id>", "Equip an owned rod."]] },
+  progression: { label: "Progression", emoji: "🏆", description: "Track your level and compete with other anglers.", commands: [["!profile [@user]", "View an angler profile."], ["!leaderboard", "See the top anglers by XP."]] },
+  marketplace: { label: "Marketplace", emoji: "🛒", description: "Buy and sell individual catches.", commands: [["!market", "Browse active listings."], ["!market <fish>", "Find listings for a fish."], ["!market list <catchId> <price>", "List one of your catches."], ["!market buy <listingId>", "Purchase a listing."], ["!market cancel <listingId>", "Cancel your listing."], ["!market prices <fish>", "View recent price statistics."], ["!market history", "View your market history."]] },
+  trading: { label: "Player trading", emoji: "🤝", description: "Exchange catches and coins directly with another player.", commands: [["!trade @user", "Start a trade with a player."], ["!trade add <tradeId> <catchId>", "Add a catch to your offer."], ["!trade coins <tradeId> <amount>", "Add coins to your offer."], ["!trade view <tradeId>", "Review both sides of a trade."], ["!trade confirm <tradeId>", "Confirm your side of the trade."], ["!trade cancel <tradeId>", "Cancel an open trade."]] }
+};
+function helpEmbed(category = "getting_started") {
+  const selected = HELP_CATEGORIES[category] || HELP_CATEGORIES.getting_started;
+  const commands = selected.commands.map(([name, description]) => "**`" + name + "`**\\n" + description).join("\\n\\n");
+  return baseEmbed("FISH BOT  /  COMMAND CENTER", selected.description, BANNERS.coast)
+    .addFields({ name: selected.emoji + "  " + selected.label.toUpperCase(), value: commands })
+    .setFooter({ text: "Choose a category from the menu below • Prefix: !" });
+}
+function helpMenu() {
+  return new ActionRowBuilder().addComponents(new StringSelectMenuBuilder()
+    .setCustomId("fish_help_category")
+    .setPlaceholder("Browse command categories")
+    .addOptions(Object.entries(HELP_CATEGORIES).map(([value, item]) => ({ label: item.label, value, emoji: item.emoji, description: item.description }))));
+}
+function fishGuideMenu() {
+  return new ActionRowBuilder().addComponents(new StringSelectMenuBuilder()
+    .setCustomId("fish_guide_select")
+    .setPlaceholder("Choose a species to view its photo and stats")
+    .addOptions(fish.map(item => ({ label: item.name, value: item.id, description: item.rarity + " species", emoji: "🐟" }))));
+}
+function fishDetailEmbed(item, discovered = true) {
+  return new EmbedBuilder().setColor(rarityColors[item.rarity]).setTitle(item.name.toUpperCase())
+    .setDescription(discovered ? "**" + item.rarity + "** species\\n" + item.description : "This species has not been discovered yet. Keep fishing!")
+    .setImage(item.image)
     .addFields(
-      { name: "01  ·  FISHING", value: "**!fish** Catch a fish\n**!inventory** View your catches\n**!collection** Complete the field guide\n**!rod** Check your equipped rod", inline: true },
-      { name: "02  ·  ECONOMY", value: "**!balance** Check your coins\n**!daily** Daily reward\n**!sell all** Sell eligible catches\n**!shop** Browse rods\n**!buy <rod id>** Purchase\n**!equip <rod id>** Equip", inline: true },
-      { name: "03  ·  PROGRESS", value: "**!profile [@user]** Angler profile\n**!leaderboard** Top anglers", inline: true },
-      { name: "04  ·  MARKETPLACE", value: "**!market [fish]** Browse listings\n**!market list <catchId> <price>** List a catch\n**!market buy <listingId>** Buy a listing\n**!market cancel <listingId>** Withdraw a listing\n**!market prices <fish>** Price trends\n**!market history** Transaction history", inline: false },
-      { name: "05  ·  PLAYER TRADES", value: "**!trade @user** Start a trade\n**!trade add <tradeId> <catchId>** Add a fish\n**!trade coins <tradeId> <amount>** Offer coins\n**!trade view <tradeId>** Review offers\n**!trade confirm <tradeId>** Confirm\n**!trade cancel <tradeId>** Cancel", inline: false }
-    )
-    .setFooter({ text: "Trades require both players to confirm • Listed and offered catches are safely locked" });
+      { name: "RARITY", value: item.rarity, inline: true },
+      { name: "SELL VALUE", value: discovered ? item.minValue + "–" + item.maxValue + " coins" : "???", inline: true },
+      { name: "XP REWARD", value: discovered ? String(item.xp) + " XP" : "???", inline: true }
+    ).setFooter({ text: "Fish Field Guide  •  Discover all species" });
 }
 
 module.exports = {
   fishCommand, balanceCommand, inventoryCommand, sellCommand, dailyCommand,
   shopCommand, buyCommand, equipCommand, rodCommand, profileCommand,
-  leaderboardCommand, collectionCommand, helpEmbed
+  leaderboardCommand, collectionCommand, helpEmbed, helpMenu, fishGuideMenu, fishDetailEmbed
 };
