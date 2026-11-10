@@ -40,12 +40,12 @@ async function marketBrowse(message, query) {
   if (!result.rowCount) return message.reply("🏪 No active listings found. Try another search or list a fish with !market list <catchId> <price>.");
   const embed = new EmbedBuilder().setColor(MARKET_COLOR)
     .setTitle("🛒  THE FISH MARKET")
-    .setDescription("Discover catches listed by other anglers. Compare rarity, price and seller before buying.")
+    .setDescription("Browse the latest catches from the community. Find a deal, grow your collection and sell your own discoveries.")
     .addFields(
-      { name: "LIVE LISTINGS", value: String(result.rowCount), inline: true },
-      { name: "SORTED BY", value: "Lowest price", inline: true },
-      { name: "AVAILABLE ACTION", value: "!market buy <listingId>", inline: true },
-      ...result.rows.map(row => ({ name: ((fish.find(item => item.name.toLowerCase() === row.fish_name.toLowerCase()) || {}).emoji || "🐟") + "  #" + row.id + "  ·  " + row.fish_name, value: "**" + row.rarity + "**  ·  " + money(row.price) + "\nSeller: " + row.seller_name, inline: true }))
+      { name: "📦 LIVE LISTINGS", value: String(result.rowCount), inline: true },
+      { name: "↕️ SORTED BY", value: "Lowest price", inline: true },
+      { name: "🛍️ BUYING", value: "!market buy <listingId>", inline: true },
+      ...result.rows.map(row => ({ name: ((fish.find(item => item.name.toLowerCase() === row.fish_name.toLowerCase()) || {}).emoji || "🐟") + "  #" + row.id + "  ·  " + row.fish_name, value: "💎 **" + row.rarity + "**  ·  " + money(row.price) + "\n👤 Seller: " + row.seller_name, inline: true }))
     )
     .setFooter({ text: "15 listings shown  •  List a catch with !market list <catchId> <price>" });
   return message.reply({ embeds: [embed] });
