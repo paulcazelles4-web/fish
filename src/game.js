@@ -94,17 +94,17 @@ async function sellCommand(message, args) {
       params.push("%" + mode + "%");
       condition += " AND LOWER(fish_name) LIKE $2";
     }
-    const totals = await client.query(
-      "SELECT COUNT(*)::int AS quantity, COALESCE(SUM(value), 0)::bigint AS amount FROM catches WHERE " + condition + " AND locked_by_trade IS NULL AND market_listing_id IS NULL",
+    const sold = await client.query(
+      "UPDATE catches SET sold_at = NOW() WHERE " + condition +
+      " AND locked_by_trade IS NULL AND market_listing_id IS NULL RETURNING value",
       params
     );
-    const quantity = totals.rows[0].quantity;
-    const amount = totals.rows[0].amount;
+    const quantity = sold.rowCount;
+    const amount = sold.rows.reduce((sum, row) => sum + Number(row.value), 0);
     if (!quantity) {
       await client.query("ROLLBACK");
-      return message.reply("You don't have any matching fish to sell.");
+      return message.reply("You don't have any matching fish available to sell.");
     }
-    await client.query("UPDATE catches SET sold_at = NOW() WHERE " + condition + " AND locked_by_trade IS NULL AND market_listing_id IS NULL", params);
     await client.query("UPDATE players SET coins = coins + $2 WHERE user_id = $1", [message.author.id, amount]);
     await client.query("COMMIT");
     return message.reply("💰 Sold **" + quantity + "** fish for **" + coins(amount) + "**!");
