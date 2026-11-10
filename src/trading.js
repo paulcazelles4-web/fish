@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const { pool, ensurePlayer } = require("./db");
+const { fish } = require("./data/fish");
 
 const configuredTax = Number(process.env.MARKET_TAX_PERCENT ?? 5);
 const TAX_RATE = (Number.isFinite(configuredTax) ? Math.min(25, Math.max(0, configuredTax)) : 5) / 100;
@@ -42,6 +43,7 @@ async function marketBrowse(message, query) {
     .setTitle("THE FISH MARKET")
     .setDescription("Discover catches listed by other anglers. Compare rarity, price and seller before buying.")
     .setImage(MARKET_BANNER)
+    .setThumbnail((fish.find(item => item.name.toLowerCase() === result.rows[0].fish_name.toLowerCase()) || {}).image || MARKET_BANNER)
     .addFields(
       { name: "LIVE LISTINGS", value: String(result.rowCount), inline: true },
       { name: "SORTED BY", value: "Lowest price", inline: true },
