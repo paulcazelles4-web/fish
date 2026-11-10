@@ -6,6 +6,8 @@ const TAX_RATE = (Number.isFinite(configuredTax) ? Math.min(25, Math.max(0, conf
 const TRADE_TTL_MINUTES = 15;
 const MAX_LISTING_PRICE = 1_000_000_000;
 const money = value => Number(value).toLocaleString("en-US") + " coins";
+const MARKET_BANNER = "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1200&q=85";
+const MARKET_COLOR = 0x123B50;
 const clean = value => String(value || "").trim().toLowerCase();
 
 async function runTx(callback) {
@@ -36,11 +38,17 @@ async function marketBrowse(message, query) {
     "FROM market_listings l JOIN players p ON p.user_id = l.seller_id WHERE " + where +
     " ORDER BY l.price ASC LIMIT 15", params);
   if (!result.rowCount) return message.reply("🏪 No active listings found. Try another search or list a fish with !market list <catchId> <price>.");
-  const embed = new EmbedBuilder().setColor(0x2ecc71).setTitle("🌊 Fish Marketplace")
-    .setDescription(result.rows.map(row =>
-      "**#" + row.id + " · " + row.fish_name + "** (" + row.rarity + ")\nPrice: **" +
-      money(row.price) + "** · Seller: " + row.seller_name).join("\n\n"))
-    .setFooter({ text: "Buy with !market buy <listingId> · 15 listings per page" });
+  const embed = new EmbedBuilder().setColor(MARKET_COLOR)
+    .setTitle("THE FISH MARKET")
+    .setDescription("Discover catches listed by other anglers. Compare rarity, price and seller before buying.")
+    .setImage(MARKET_BANNER)
+    .addFields(
+      { name: "LIVE LISTINGS", value: String(result.rowCount), inline: true },
+      { name: "SORTED BY", value: "Lowest price", inline: true },
+      { name: "AVAILABLE ACTION", value: "!market buy <listingId>", inline: true },
+      ...result.rows.map(row => ({ name: "#" + row.id + "  ·  " + row.fish_name, value: "**" + row.rarity + "**  ·  " + money(row.price) + "\nSeller: " + row.seller_name, inline: true }))
+    )
+    .setFooter({ text: "15 listings shown  •  List a catch with !market list <catchId> <price>" });
   return message.reply({ embeds: [embed] });
 }
 
