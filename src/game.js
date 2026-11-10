@@ -290,7 +290,7 @@ const HELP_CATEGORIES = {
 };
 function helpEmbed(category = "getting_started") {
   const selected = HELP_CATEGORIES[category] || HELP_CATEGORIES.getting_started;
-  const commands = selected.commands.map(([name, description]) => "**`" + name + "`**\\n" + description).join("\\n\\n");
+  const commands = selected.commands.map(([name, description]) => "**`" + name + "`**\n" + description).join("\n\n");
   return baseEmbed("FISH BOT  /  COMMAND CENTER", selected.description, BANNERS.coast)
     .addFields({ name: selected.emoji + "  " + selected.label.toUpperCase(), value: commands })
     .setFooter({ text: "Choose a category from the menu below • Prefix: !" });
@@ -309,7 +309,7 @@ function fishGuideMenu() {
 }
 function fishDetailEmbed(item, discovered = true) {
   return new EmbedBuilder().setColor(rarityColors[item.rarity]).setTitle(item.name.toUpperCase())
-    .setDescription(discovered ? "**" + item.rarity + "** species\\n" + item.description : "This species has not been discovered yet. Keep fishing!")
+    .setDescription(discovered ? "**" + item.rarity + "** species\n" + item.description : "This species has not been discovered yet. Keep fishing!")
     .setImage(item.image)
     .addFields(
       { name: "RARITY", value: item.rarity, inline: true },
