@@ -1,0 +1,10 @@
+{
+  "name": "fish-discord-bot",
+  "version": "1.0.0",
+  "description": "An advanced fishing RPG Discord bot.",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": { "start": "node src/index.js", "dev": "node --watch src/index.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": { "discord.js": "^14.25.1", "dotenv": "^16.6.1", "pg": "^8.16.3" }
+}
