@@ -12,8 +12,8 @@ if (!token) {
   console.error("Missing DISCORD_TOKEN. Add it to your environment variables.");
   process.exit(1);
 }
-if (!process.env.DATABASE_URL) {
-  console.error("Missing DATABASE_URL. Configure PostgreSQL before starting.");
+if (!process.env.NEON_DATABASE_URL && !process.env.DATABASE_URL) {
+  console.error("Missing NEON_DATABASE_URL. Configure your Neon PostgreSQL connection before starting.");
   process.exit(1);
 }
 
