@@ -6,12 +6,6 @@ const { rods } = require("./data/rods");
 const FISH_COOLDOWN_MS = 30_000;
 const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
-const BANNERS = {
-  ocean: "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1200&q=85",
-  fishing: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=85",
-  coast: "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=1200&q=85",
-  sunset: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=85"
-};
 const THEME = 0x123B50;
 const divider = "━━━━━━━━━━━━━━━━━━━━";
 function progressBar(current, total, size = 12) {
@@ -22,7 +16,6 @@ function progressBar(current, total, size = 12) {
 function baseEmbed(title, description, banner) {
   const embed = new EmbedBuilder().setColor(THEME).setTitle(title);
   if (description) embed.setDescription(description);
-  if (banner) embed.setImage(banner);
   return embed;
 }
 
@@ -63,9 +56,8 @@ async function fishCommand(message) {
 
   const embed = new EmbedBuilder()
     .setColor(rarityColors[caught.rarity])
-    .setTitle("🎣 Fish caught!")
+    .setTitle((caught.emoji || "🐟") + "  FISH CAUGHT!")
     .setDescription("You reeled in a **" + caught.name + "**!")
-    .setImage(caught.image)
     .addFields(
       { name: "Rarity", value: caught.rarity, inline: true },
       { name: "Estimated value", value: coins(value), inline: true },
@@ -165,7 +157,7 @@ async function shopCommand(message) {
     const status = ownedSet.has(rod.id) ? "✅ Owned" : "**" + coins(rod.price) + "**";
     return "**" + rod.name + "** (" + rod.id + ") — Luck +" + rod.luck + " — " + status + "\n" + rod.description;
   });
-  const embed = baseEmbed("THE TACKLE SHOP", "Choose your next upgrade. Better rods increase your luck on every cast.", BANNERS.fishing)
+  const embed = baseEmbed("🛠️  THE TACKLE SHOP", "Choose your next upgrade. Better rods increase your luck on every cast.")
     .addFields(
       { name: "YOUR WALLET", value: coins(player.coins), inline: true },
       { name: "RODS AVAILABLE", value: String(rods.length), inline: true },
@@ -260,7 +252,7 @@ async function leaderboardCommand(message) {
   const lines = result.rows.map((row, index) =>
     "**" + (index + 1) + ".** " + row.username + " — Level " + row.level + " · " +
     Number(row.xp).toLocaleString("en-US") + " XP");
-  const embed = baseEmbed("ANGLER RANKINGS", "The most experienced anglers in the waters.", BANNERS.sunset)
+  const embed = baseEmbed("🏆  ANGLER RANKINGS", "The most experienced anglers in the waters.")
     .setDescription(lines.length ? lines.join("\n") : "No anglers yet.")
     .setFooter({ text: "Ranked by total XP • Keep fishing to climb the board" });
   return message.reply({ embeds: [embed] });
@@ -271,12 +263,12 @@ async function collectionCommand(message) {
   const result = await pool.query("SELECT DISTINCT fish_id FROM catches WHERE user_id = $1", [message.author.id]);
   const found = new Set(result.rows.map(row => row.fish_id));
   const lines = fish.map(item => (found.has(item.id) ? "✅" : "⬛") + " **" + item.name + "** — " + item.rarity);
-  const embed = baseEmbed("THE FISH FIELD GUIDE", "Every species has a story. Discover them all.", BANNERS.ocean)
+  const embed = baseEmbed("📖  THE FISH FIELD GUIDE", "Every species has a story. Discover them all.")
     .addFields(
       { name: "DISCOVERY PROGRESS", value: "**" + found.size + " / " + fish.length + "** species\n" + progressBar(found.size, fish.length) },
       { name: "SPECIES INDEX", value: lines.join("\n") }
     )
-    .setFooter({ text: "Select any species below to view its photo and details" });
+    .setFooter({ text: "Select a species below to view its profile and stats" });
   return message.reply({ embeds: [embed], components: [fishGuideMenu()] });
 }
 
@@ -291,7 +283,7 @@ const HELP_CATEGORIES = {
 function helpEmbed(category = "getting_started") {
   const selected = HELP_CATEGORIES[category] || HELP_CATEGORIES.getting_started;
   const commands = selected.commands.map(([name, description]) => "**`" + name + "`**\n" + description).join("\n\n");
-  return baseEmbed("FISH BOT  /  COMMAND CENTER", selected.description, BANNERS.coast)
+  return baseEmbed("🐠  FISH BOT  /  COMMAND CENTER", selected.description)
     .addFields({ name: selected.emoji + "  " + selected.label.toUpperCase(), value: commands })
     .setFooter({ text: "Choose a category from the menu below • Prefix: !" });
 }
@@ -304,13 +296,12 @@ function helpMenu() {
 function fishGuideMenu() {
   return new ActionRowBuilder().addComponents(new StringSelectMenuBuilder()
     .setCustomId("fish_guide_select")
-    .setPlaceholder("Choose a species to view its photo and stats")
-    .addOptions(fish.map(item => ({ label: item.name, value: item.id, description: item.rarity + " species", emoji: "🐟" }))));
+    .setPlaceholder("Choose a species to view its stats")
+    .addOptions(fish.map(item => ({ label: item.name, value: item.id, description: item.rarity + " species", emoji: item.emoji || "🐟" }))));
 }
 function fishDetailEmbed(item, discovered = true) {
-  return new EmbedBuilder().setColor(rarityColors[item.rarity]).setTitle(item.name.toUpperCase())
+  return new EmbedBuilder().setColor(rarityColors[item.rarity]).setTitle((item.emoji || "🐟") + "  " + item.name.toUpperCase())
     .setDescription(discovered ? "**" + item.rarity + "** species\n" + item.description : "This species has not been discovered yet. Keep fishing!")
-    .setImage(item.image)
     .addFields(
       { name: "RARITY", value: item.rarity, inline: true },
       { name: "SELL VALUE", value: discovered ? item.minValue + "–" + item.maxValue + " coins" : "???", inline: true },
