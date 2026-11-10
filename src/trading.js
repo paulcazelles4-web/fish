@@ -1,7 +1,8 @@
 const { EmbedBuilder } = require("discord.js");
 const { pool, ensurePlayer } = require("./db");
 
-const TAX_RATE = Math.min(25, Math.max(0, Number(process.env.MARKET_TAX_PERCENT ?? 5))) / 100;
+const configuredTax = Number(process.env.MARKET_TAX_PERCENT ?? 5);
+const TAX_RATE = (Number.isFinite(configuredTax) ? Math.min(25, Math.max(0, configuredTax)) : 5) / 100;
 const TRADE_TTL_MINUTES = 15;
 const MAX_LISTING_PRICE = 1_000_000_000;
 const money = value => Number(value).toLocaleString("en-US") + " coins";
