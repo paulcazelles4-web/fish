@@ -99,9 +99,9 @@ async function inventoryCommand(message) {
     .setAuthor({ name: message.author.username + "'s inventory", iconURL: message.author.displayAvatarURL() })
     .addFields(
       { name: "CATCHES SHOWN", value: String(result.rowCount) + " / 20", inline: true },
-      { name: "DISPLAYED VALUE", value: coins(totalValue), inline: true },
-      { name: divider, value: lines.join("\n") }
+      { name: "DISPLAYED VALUE", value: coins(totalValue), inline: true }
     )
+    .setDescription(lines.join("\n"))
     .setFooter({ text: "Use !market list <catchId> <price> or !trade add <tradeId> <catchId>" });
   return message.reply({ embeds: [embed] });
 }
