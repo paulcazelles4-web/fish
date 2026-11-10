@@ -7,13 +7,12 @@ const FISH_COOLDOWN_MS = 30_000;
 const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 const THEME = 0x123B50;
-const divider = "━━━━━━━━━━━━━━━━━━━━";
 function progressBar(current, total, size = 12) {
   const ratio = total > 0 ? Math.max(0, Math.min(1, current / total)) : 0;
   const filled = Math.round(ratio * size);
   return "▰".repeat(filled) + "▱".repeat(size - filled);
 }
-function baseEmbed(title, description, banner) {
+function baseEmbed(title, description) {
   const embed = new EmbedBuilder().setColor(THEME).setTitle(title);
   if (description) embed.setDescription(description);
   return embed;
@@ -85,7 +84,8 @@ async function inventoryCommand(message) {
   const lines = result.rows.map(row => {
     const state = row.locked_by_trade ? " · 🔒 Trade #" + row.locked_by_trade :
       row.market_listing_id ? " · 🏷️ Listing #" + row.market_listing_id : "";
-    return "**#" + row.id + " " + row.fish_name + "** (" + row.rarity + ") — " + coins(row.value) + state;
+    const species = fish.find(item => item.name.toLowerCase() === row.fish_name.toLowerCase());
+    return (species?.emoji || "🐟") + " **#" + row.id + " " + row.fish_name + "** · " + row.rarity + " — " + coins(row.value) + state;
   });
   const totalValue = result.rows.reduce((sum, row) => sum + Number(row.value), 0);
   const embed = baseEmbed("YOUR CATCHES", "A clean look at your latest catches. Locked fish cannot be sold or listed.")
@@ -233,8 +233,7 @@ async function profileCommand(message, target) {
   const levelProgress = Math.max(0, Number(player.xp) - previousLevelXp);
   const levelSpan = Math.max(1, nextLevelXp - previousLevelXp);
   const embed = baseEmbed("ANGLER PROFILE", "A snapshot of this angler\'s progress.")
-    .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
-    .setThumbnail(user.displayAvatarURL({ size: 256 }))
+    .setAuthor({ name: "🎣 " + user.username })
     .addFields(
       { name: "LEVEL", value: "**" + player.level + "**\n" + progressBar(levelProgress, levelSpan) + "\n" + levelProgress.toLocaleString("en-US") + " / " + levelSpan.toLocaleString("en-US") + " XP", inline: false },
       { name: "WALLET", value: coins(player.coins), inline: true },
@@ -262,7 +261,7 @@ async function collectionCommand(message) {
   await playerFor(message);
   const result = await pool.query("SELECT DISTINCT fish_id FROM catches WHERE user_id = $1", [message.author.id]);
   const found = new Set(result.rows.map(row => row.fish_id));
-  const lines = fish.map(item => (found.has(item.id) ? "✅" : "⬛") + " **" + item.name + "** — " + item.rarity);
+  const lines = fish.map(item => (found.has(item.id) ? "✅" : "🔒") + " " + item.emoji + " **" + item.name + "** — " + item.rarity);
   const embed = baseEmbed("📖  THE FISH FIELD GUIDE", "Every species has a story. Discover them all.")
     .addFields(
       { name: "DISCOVERY PROGRESS", value: "**" + found.size + " / " + fish.length + "** species\n" + progressBar(found.size, fish.length) },
@@ -301,11 +300,11 @@ function fishGuideMenu() {
 }
 function fishDetailEmbed(item, discovered = true) {
   return new EmbedBuilder().setColor(rarityColors[item.rarity]).setTitle((item.emoji || "🐟") + "  " + item.name.toUpperCase())
-    .setDescription(discovered ? "**" + item.rarity + "** species\n" + item.description : "This species has not been discovered yet. Keep fishing!")
+    .setDescription(discovered ? "**" + item.rarity.toUpperCase() + " SPECIES**\n" + item.description + "\n\n🎯 **Catch chance:** " + item.weight + " weight points" : "🔒 This species is still undiscovered. Keep fishing to reveal it!")
     .addFields(
       { name: "RARITY", value: item.rarity, inline: true },
-      { name: "SELL VALUE", value: discovered ? item.minValue + "–" + item.maxValue + " coins" : "???", inline: true },
-      { name: "XP REWARD", value: discovered ? String(item.xp) + " XP" : "???", inline: true }
+      { name: "🪙 SELL VALUE", value: discovered ? item.minValue + "–" + item.maxValue + " coins" : "???", inline: true },
+      { name: "⭐ XP REWARD", value: discovered ? String(item.xp) + " XP" : "???", inline: true }
     ).setFooter({ text: "Fish Field Guide  •  Discover all species" });
 }
 
