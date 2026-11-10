@@ -65,16 +65,19 @@ async function balanceCommand(message) {
 async function inventoryCommand(message) {
   await playerFor(message);
   const result = await pool.query(
-    "SELECT fish_name, rarity, COUNT(*)::int AS quantity, SUM(value)::bigint AS total_value FROM catches WHERE user_id = $1 AND sold_at IS NULL GROUP BY fish_name, rarity ORDER BY SUM(value) DESC LIMIT 20",
+    "SELECT id, fish_name, rarity, value, locked_by_trade, market_listing_id FROM catches WHERE user_id = $1 AND sold_at IS NULL ORDER BY caught_at DESC LIMIT 20",
     [message.author.id]
   );
   if (!result.rowCount) return message.reply("🎒 Your inventory is empty. Use !fish to catch your first fish.");
-  const lines = result.rows.map(row =>
-    "• **" + row.fish_name + "** ×" + row.quantity + " — " + row.rarity + " — " + coins(row.total_value));
+  const lines = result.rows.map(row => {
+    const state = row.locked_by_trade ? " · 🔒 Trade #" + row.locked_by_trade :
+      row.market_listing_id ? " · 🏷️ Listing #" + row.market_listing_id : "";
+    return "**#" + row.id + " " + row.fish_name + "** (" + row.rarity + ") — " + coins(row.value) + state;
+  });
   const embed = new EmbedBuilder().setColor(0x3498db)
     .setTitle("🎒 " + message.author.username + "'s Inventory")
     .setDescription(lines.join("\n"))
-    .setFooter({ text: "Showing up to 20 fish types • !sell all to sell your catches" });
+    .setFooter({ text: "Use catch IDs with !market list or !trade add • Showing newest 20 catches" });
   return message.reply({ embeds: [embed] });
 }
 
@@ -92,7 +95,7 @@ async function sellCommand(message, args) {
       condition += " AND LOWER(fish_name) LIKE $2";
     }
     const totals = await client.query(
-      "SELECT COUNT(*)::int AS quantity, COALESCE(SUM(value), 0)::bigint AS amount FROM catches WHERE " + condition,
+      "SELECT COUNT(*)::int AS quantity, COALESCE(SUM(value), 0)::bigint AS amount FROM catches WHERE " + condition + " AND locked_by_trade IS NULL AND market_listing_id IS NULL",
       params
     );
     const quantity = totals.rows[0].quantity;
@@ -101,7 +104,7 @@ async function sellCommand(message, args) {
       await client.query("ROLLBACK");
       return message.reply("You don't have any matching fish to sell.");
     }
-    await client.query("UPDATE catches SET sold_at = NOW() WHERE " + condition, params);
+    await client.query("UPDATE catches SET sold_at = NOW() WHERE " + condition + " AND locked_by_trade IS NULL AND market_listing_id IS NULL", params);
     await client.query("UPDATE players SET coins = coins + $2 WHERE user_id = $1", [message.author.id, amount]);
     await client.query("COMMIT");
     return message.reply("💰 Sold **" + quantity + "** fish for **" + coins(amount) + "**!");
