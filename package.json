@@ -4,7 +4,17 @@
   "description": "An advanced fishing RPG Discord bot.",
   "main": "src/index.js",
   "type": "commonjs",
-  "scripts": { "start": "node src/index.js", "dev": "node --watch src/index.js" },
-  "engines": { "node": ">=20" },
-  "dependencies": { "discord.js": "^14.25.1", "dotenv": "^16.6.1", "pg": "^8.16.3" }
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "check": "node --check src/index.js && node --check src/db.js && node --check src/game.js && node --check src/trading.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "discord.js": "^14.25.1",
+    "dotenv": "^16.6.1",
+    "pg": "^8.16.3"
+  }
 }
