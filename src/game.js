@@ -243,8 +243,9 @@ function helpEmbed() {
     .addFields(
       { name: "Fishing", value: "**!fish** — Catch a fish\n**!inventory** — View your unsold catches\n**!collection** — View discovered species\n**!rod** — View your equipped rod" },
       { name: "Economy", value: "**!balance** — Check your coins\n**!daily** — Claim your daily reward\n**!sell all** — Sell all catches\n**!shop** — Browse fishing rods\n**!buy <rod id>** — Buy a rod\n**!equip <rod id>** — Equip a rod" },
-      { name: "Progress", value: "**!profile [@user]** — View an angler profile\n**!leaderboard** — View top anglers" }
-    ).setFooter({ text: "More adventures and features are coming soon!" });
+      { name: "Progress", value: "**!profile [@user]** — View an angler profile\n**!leaderboard** — View top anglers\n**!collection** — Track discovered species" },
+      { name: "Trading & Marketplace", value: "**!market [fish]** — Browse player listings\n**!market list <catchId> <price>** — List a fish\n**!market buy <listingId>** — Buy a fish\n**!market cancel <listingId>** — Withdraw a listing\n**!market prices <fish>** — View market statistics\n**!market history** — View your sales and purchases\n**!trade @user** — Start a direct trade\n**!trade add <tradeId> <catchId>** — Offer a fish\n**!trade coins <tradeId> <amount>** — Offer coins\n**!trade view <tradeId>** — Review a trade\n**!trade confirm <tradeId>** — Confirm a trade\n**!trade cancel <tradeId>** — Cancel a trade" }
+    ).setFooter({ text: "Trades use dual confirmation. Listed and offered fish are locked until sold, cancelled, or expired." });
 }
 
 module.exports = {
