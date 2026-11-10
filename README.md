@@ -1,16 +1,20 @@
 # Fish Bot 🎣
 
-An advanced fishing RPG for Discord, built with Node.js, Discord.js v14, and PostgreSQL.
+An advanced fishing RPG for Discord, built with Node.js 20+, Discord.js v14, and Neon PostgreSQL.
 
-## Current features
+## Current systems
 
-- Fishing with weighted fish rarities and a 30-second cooldown
-- Fish inventory and sell system
-- Coins and daily rewards
+- Weighted fishing with seven fish rarities and a cooldown
+- Individual fish inventory with unique catch IDs
+- Coin wallet, daily rewards, and fish selling
 - Fishing rod shop, purchases, and equipment upgrades
 - XP, levels, angler profiles, and leaderboard
 - Fish encyclopedia / collection tracker
-- English command responses and configurable ! prefix
+- Player-to-player fish and coin trading
+- Public fish marketplace with fixed-price listings
+- Configurable marketplace tax, listing expiry, and transaction records
+- 30-day average / minimum / maximum sale-price statistics
+- Transactional settlement, fish locks, dual trade confirmation, and expiry cleanup
 
 ## Commands
 
@@ -19,53 +23,83 @@ An advanced fishing RPG for Discord, built with Node.js, Discord.js v14, and Pos
 | !help | Show the command guide |
 | !fish | Catch a fish |
 | !balance | Check your coins |
-| !inventory | View unsold fish |
-| !sell all | Sell all fish in your inventory |
-| !sell <fish name> | Sell matching fish |
-| !daily | Claim your daily coins |
+| !inventory | View catches and their IDs |
+| !sell all | Sell all available fish |
+| !sell <fish name> | Sell matching available fish |
+| !daily | Claim daily coins |
 | !shop | Browse fishing rods |
-| !buy <rod id> | Purchase a fishing rod |
+| !buy <rod id> | Purchase a rod |
 | !equip <rod id> | Equip an owned rod |
 | !rod | View your active rod |
 | !profile [@user] | View an angler profile |
-| !leaderboard | View the XP leaderboard |
-| !collection | View discovered fish |\n| !market [fish] | Browse the player marketplace |\n| !market list <catchId> <price> | List a fish for sale |\n| !market buy <listingId> | Buy a listed fish |\n| !market cancel <listingId> | Withdraw your listing |\n| !market prices <fish name> | View 30-day market price statistics |\n| !market history | View your recent market transactions |\n| !trade @user | Start a player-to-player trade |\n| !trade add <tradeId> <catchId> | Add a fish to a trade |\n| !trade coins <tradeId> <amount> | Set your coin offer |\n| !trade view <tradeId> | Review both sides of a trade |\n| !trade confirm <tradeId> | Confirm a trade |\n| !trade cancel <tradeId> | Cancel a trade |
+| !leaderboard | View top anglers |
+| !collection | View discovered fish |
+| !market [fish] | Browse marketplace listings |
+| !market list <catchId> <price> | List one catch for sale |
+| !market buy <listingId> | Buy a listed catch |
+| !market cancel <listingId> | Withdraw your listing |
+| !market prices <fish name> | View 30-day price statistics |
+| !market history | View your latest market transactions |
+| !trade @user | Start a direct trade |
+| !trade add <tradeId> <catchId> | Add one of your catches to a trade |
+| !trade coins <tradeId> <amount> | Set your coin offer |
+| !trade view <tradeId> | Review both sides of a trade |
+| !trade confirm <tradeId> | Confirm the current trade |
+| !trade cancel <tradeId> | Cancel and unlock your offered catches |
 | !ping | Check bot latency |
 
 ## Requirements
 
 - Node.js 20 or newer
 - A Discord application and bot token
-- A Neon PostgreSQL database (or another PostgreSQL provider)
+- A Neon PostgreSQL project
 
 ## Local setup
 
 1. Clone this repository.
-2. Install dependencies with npm install.
-3. Copy .env.example to .env.
-4. Set DISCORD_TOKEN and NEON_DATABASE_URL in .env using the pooled connection string from your Neon project. DATABASE_URL is also accepted as a fallback.
-5. In the Discord Developer Portal, enable Message Content Intent for the bot.
-6. Invite the bot with permission to view and send messages and embed links.
-7. Start the bot with npm start.
+2. Install dependencies with `npm install`.
+3. Copy `.env.example` to `.env`.
+4. Set `DISCORD_TOKEN` and `NEON_DATABASE_URL` in `.env`.
+5. In Neon, copy the **pooled** connection string (hostname commonly contains `-pooler`) and use it as `NEON_DATABASE_URL`. Keep the `sslmode=require` option.
+6. In the Discord Developer Portal, enable **Message Content Intent**.
+7. Invite the bot with permission to view and send messages and embed links.
+8. Start with `npm start`.
 
-Database tables are created automatically on startup.
+The bot creates and upgrades its required tables at startup. Existing player and catch records are preserved by additive schema migrations.
 
-## Railway deployment
+## Railway deployment with Neon
 
 1. Create a Railway project and deploy this GitHub repository.
-2. Add a PostgreSQL service to the Railway project.
-3. Set DATABASE_URL for the bot service using the PostgreSQL service reference.
-4. Add DISCORD_TOKEN and optionally BOT_PREFIX=!.
-5. Deploy. The start command is npm start.
+2. Create a Neon project and database.
+3. Copy the Neon **pooled** connection string.
+4. In Railway Variables, set:
+   - `DISCORD_TOKEN` — your Discord bot token
+   - `NEON_DATABASE_URL` — your Neon pooled connection string
+   - `DATABASE_SSL=true`
+   - `BOT_PREFIX=!`
+   - `MARKET_TAX_PERCENT=5` (optional; allowed range is 0–25)
+5. Deploy with the start command `npm start`.
 
-If your PostgreSQL provider requires SSL, set DATABASE_SSL=true.
+`DATABASE_URL` is accepted as a fallback variable name. Do not commit real credentials to GitHub.
+
+## Marketplace rules
+
+- Every caught fish has a unique catch ID, shown by `!inventory`.
+- A catch can only be in one place at a time: available inventory, one direct trade, or one marketplace listing.
+- Direct trades expire after 15 minutes. Both participants must review and confirm the same offer.
+- Editing a trade offer resets both confirmations.
+- Marketplace listings expire after 7 days.
+- Marketplace purchases and direct trades settle inside PostgreSQL transactions.
+- The marketplace fee defaults to 5%, can be configured with `MARKET_TAX_PERCENT`, and is capped at 25%.
+- `!market prices` uses completed Fish Bot sales only; it is not an external real-money price feed.
 
 ## Security
 
-- Never commit your Discord bot token or database credentials.
-- Keep secrets in Railway Variables or a local .env file.
-- Never share your bot token in Discord, screenshots, or source code.
+- Never commit your Discord token or Neon connection string.
+- Store secrets in Railway Variables or a local `.env` file.
+- Use Neon pooled connection strings for the deployed bot.
+- Fish and coin transfers are game-only virtual items and currency.
 
 ## Roadmap
 
-The player marketplace supports individual fish listings, atomic purchases, configurable sales tax, expiring listings, transaction history, and 30-day price statistics. Direct trades support fish and coins, dual confirmation, item locks, expiry, cancellation, and transactional settlement. Planned systems include quests, fishing zones and biomes, weather, tournaments, pets, crafting, bait, treasures, events, achievements, and staff configuration commands.
+Potential next systems: buy orders, timed auctions, price alerts, server-wide trading events, player shops, trade reputation, and moderator marketplace controls.
