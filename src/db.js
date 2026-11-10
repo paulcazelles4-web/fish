@@ -8,7 +8,7 @@ if (!connectionString) {
 const pool = new Pool({
   connectionString,
   // Neon requires TLS; use the pooled connection string for long-running bot workloads.
-  ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
+  ssl: process.env.DATABASE_SSL === "false" ? false : true,
   max: Number(process.env.DB_POOL_MAX || 10),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000
