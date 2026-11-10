@@ -6,6 +6,26 @@ const { rods } = require("./data/rods");
 const FISH_COOLDOWN_MS = 30_000;
 const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
+const BANNERS = {
+  ocean: "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1200&q=85",
+  fishing: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=85",
+  coast: "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=1200&q=85",
+  sunset: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=85"
+};
+const THEME = 0x123B50;
+const divider = "━━━━━━━━━━━━━━━━━━━━";
+function progressBar(current, total, size = 12) {
+  const ratio = total > 0 ? Math.max(0, Math.min(1, current / total)) : 0;
+  const filled = Math.round(ratio * size);
+  return "▰".repeat(filled) + "▱".repeat(size - filled);
+}
+function baseEmbed(title, description, banner) {
+  const embed = new EmbedBuilder().setColor(THEME).setTitle(title);
+  if (description) embed.setDescription(description);
+  if (banner) embed.setImage(banner);
+  return embed;
+}
+
 function coins(value) {
   return "🪙 " + Number(value).toLocaleString("en-US") + " coins";
 }
@@ -74,10 +94,15 @@ async function inventoryCommand(message) {
       row.market_listing_id ? " · 🏷️ Listing #" + row.market_listing_id : "";
     return "**#" + row.id + " " + row.fish_name + "** (" + row.rarity + ") — " + coins(row.value) + state;
   });
-  const embed = new EmbedBuilder().setColor(0x3498db)
-    .setTitle("🎒 " + message.author.username + "'s Inventory")
-    .setDescription(lines.join("\n"))
-    .setFooter({ text: "Use catch IDs with !market list or !trade add • Showing newest 20 catches" });
+  const totalValue = result.rows.reduce((sum, row) => sum + Number(row.value), 0);
+  const embed = baseEmbed("YOUR CATCHES", "A clean look at your latest catches. Locked fish cannot be sold or listed.")
+    .setAuthor({ name: message.author.username + "'s inventory", iconURL: message.author.displayAvatarURL() })
+    .addFields(
+      { name: "CATCHES SHOWN", value: String(result.rowCount) + " / 20", inline: true },
+      { name: "DISPLAYED VALUE", value: coins(totalValue), inline: true },
+      { name: divider, value: lines.join("\n") }
+    )
+    .setFooter({ text: "Use !market list <catchId> <price> or !trade add <tradeId> <catchId>" });
   return message.reply({ embeds: [embed] });
 }
 
@@ -139,9 +164,17 @@ async function shopCommand(message) {
     const status = ownedSet.has(rod.id) ? "✅ Owned" : "**" + coins(rod.price) + "**";
     return "**" + rod.name + "** (" + rod.id + ") — Luck +" + rod.luck + " — " + status + "\n" + rod.description;
   });
-  const embed = new EmbedBuilder().setColor(0x2ecc71).setTitle("🛒 Fishing Rod Shop")
-    .setDescription(lines.join("\n\n"))
-    .setFooter({ text: "Your balance: " + Number(player.coins).toLocaleString("en-US") + " coins • Use !buy <rod id>" });
+  const embed = baseEmbed("THE TACKLE SHOP", "Choose your next upgrade. Better rods increase your luck on every cast.", BANNERS.fishing)
+    .addFields(
+      { name: "YOUR WALLET", value: coins(player.coins), inline: true },
+      { name: "RODS AVAILABLE", value: String(rods.length), inline: true },
+      ...rods.map(rod => ({
+        name: (ownedSet.has(rod.id) ? "✓ " : "＋ ") + rod.name + "  ·  " + rod.id,
+        value: rod.description + "\nLuck **+" + rod.luck + "**  ·  " + (ownedSet.has(rod.id) ? "**Owned**" : "**" + coins(rod.price) + "**"),
+        inline: false
+      }))
+    )
+    .setFooter({ text: "Purchase with !buy <rod id>  •  Equip with !equip <rod id>" });
   return message.reply({ embeds: [embed] });
 }
 
@@ -202,15 +235,20 @@ async function profileCommand(message, target) {
   const unsold = await pool.query(
     "SELECT COUNT(*)::int AS count FROM catches WHERE user_id = $1 AND sold_at IS NULL",
     [user.id]);
-  const embed = new EmbedBuilder().setColor(0x1abc9c)
-    .setAuthor({ name: user.username + "'s Angler Profile", iconURL: user.displayAvatarURL() })
+  const nextLevelXp = Number(player.level) * Number(player.level) * 100;
+  const previousLevelXp = Math.max(0, (Number(player.level) - 1) ** 2 * 100);
+  const levelProgress = Math.max(0, Number(player.xp) - previousLevelXp);
+  const levelSpan = Math.max(1, nextLevelXp - previousLevelXp);
+  const embed = baseEmbed("ANGLER PROFILE", "A snapshot of this angler\'s progress.")
+    .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
+    .setThumbnail(user.displayAvatarURL({ size: 256 }))
     .addFields(
-      { name: "Level", value: String(player.level), inline: true },
-      { name: "XP", value: Number(player.xp).toLocaleString("en-US"), inline: true },
-      { name: "Coins", value: Number(player.coins).toLocaleString("en-US"), inline: true },
-      { name: "Fish caught", value: String(caught.rows[0].total), inline: true },
-      { name: "Species found", value: String(caught.rows[0].species), inline: true },
-      { name: "Fish in inventory", value: String(unsold.rows[0].count), inline: true }
+      { name: "LEVEL", value: "**" + player.level + "**\n" + progressBar(levelProgress, levelSpan) + "\n" + levelProgress.toLocaleString("en-US") + " / " + levelSpan.toLocaleString("en-US") + " XP", inline: false },
+      { name: "WALLET", value: coins(player.coins), inline: true },
+      { name: "TOTAL XP", value: Number(player.xp).toLocaleString("en-US"), inline: true },
+      { name: "FISH CAUGHT", value: String(caught.rows[0].total), inline: true },
+      { name: "SPECIES", value: String(caught.rows[0].species), inline: true },
+      { name: "IN INVENTORY", value: String(unsold.rows[0].count), inline: true }
     );
   return message.reply({ embeds: [embed] });
 }
@@ -221,8 +259,9 @@ async function leaderboardCommand(message) {
   const lines = result.rows.map((row, index) =>
     "**" + (index + 1) + ".** " + row.username + " — Level " + row.level + " · " +
     Number(row.xp).toLocaleString("en-US") + " XP");
-  const embed = new EmbedBuilder().setColor(0xf1c40f).setTitle("🏆 Angler Leaderboard")
-    .setDescription(lines.length ? lines.join("\n") : "No anglers yet.");
+  const embed = baseEmbed("ANGLER RANKINGS", "The most experienced anglers in the waters.", BANNERS.sunset)
+    .setDescription(lines.length ? lines.join("\n") : "No anglers yet.")
+    .setFooter({ text: "Ranked by total XP • Keep fishing to climb the board" });
   return message.reply({ embeds: [embed] });
 }
 
@@ -231,21 +270,28 @@ async function collectionCommand(message) {
   const result = await pool.query("SELECT DISTINCT fish_id FROM catches WHERE user_id = $1", [message.author.id]);
   const found = new Set(result.rows.map(row => row.fish_id));
   const lines = fish.map(item => (found.has(item.id) ? "✅" : "⬛") + " **" + item.name + "** — " + item.rarity);
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("📖 Fish Encyclopedia")
-    .setDescription(lines.join("\n"))
-    .setFooter({ text: found.size + "/" + fish.length + " species discovered" });
+  const embed = baseEmbed("THE FISH FIELD GUIDE", "Every species has a story. Discover them all.", BANNERS.ocean)
+    .addFields(
+      { name: "DISCOVERY PROGRESS", value: "**" + found.size + " / " + fish.length + "** species\n" + progressBar(found.size, fish.length) },
+      { name: "SPECIES INDEX", value: lines.join("\n") }
+    )
+    .setFooter({ text: "Undiscovered species are hidden in the depths" });
   return message.reply({ embeds: [embed] });
 }
 
 function helpEmbed() {
-  return new EmbedBuilder().setColor(0x3498db).setTitle("🎣 Fish Bot — Command Guide")
-    .setDescription("Cast your line, discover rare fish, upgrade your gear, and become a legendary angler.")
+  return baseEmbed("FISH BOT  /  FIELD GUIDE",
+    "A little ocean adventure, built around collecting, upgrading and trading.\n\n" +
+    "**GET STARTED**\n**!fish** Cast your line  ·  **!daily** Claim your reward  ·  **!profile** View your stats",
+    BANNERS.coast)
     .addFields(
-      { name: "Fishing", value: "**!fish** — Catch a fish\n**!inventory** — View your unsold catches\n**!collection** — View discovered species\n**!rod** — View your equipped rod" },
-      { name: "Economy", value: "**!balance** — Check your coins\n**!daily** — Claim your daily reward\n**!sell all** — Sell all catches\n**!shop** — Browse fishing rods\n**!buy <rod id>** — Buy a rod\n**!equip <rod id>** — Equip a rod" },
-      { name: "Progress", value: "**!profile [@user]** — View an angler profile\n**!leaderboard** — View top anglers\n**!collection** — Track discovered species" },
-      { name: "Trading & Marketplace", value: "**!market [fish]** — Browse player listings\n**!market list <catchId> <price>** — List a fish\n**!market buy <listingId>** — Buy a fish\n**!market cancel <listingId>** — Withdraw a listing\n**!market prices <fish>** — View market statistics\n**!market history** — View your sales and purchases\n**!trade @user** — Start a direct trade\n**!trade add <tradeId> <catchId>** — Offer a fish\n**!trade coins <tradeId> <amount>** — Offer coins\n**!trade view <tradeId>** — Review a trade\n**!trade confirm <tradeId>** — Confirm a trade\n**!trade cancel <tradeId>** — Cancel a trade" }
-    ).setFooter({ text: "Trades use dual confirmation. Listed and offered fish are locked until sold, cancelled, or expired." });
+      { name: "01  ·  FISHING", value: "**!fish** Catch a fish\n**!inventory** View your catches\n**!collection** Complete the field guide\n**!rod** Check your equipped rod", inline: true },
+      { name: "02  ·  ECONOMY", value: "**!balance** Check your coins\n**!daily** Daily reward\n**!sell all** Sell eligible catches\n**!shop** Browse rods\n**!buy <rod id>** Purchase\n**!equip <rod id>** Equip", inline: true },
+      { name: "03  ·  PROGRESS", value: "**!profile [@user]** Angler profile\n**!leaderboard** Top anglers", inline: true },
+      { name: "04  ·  MARKETPLACE", value: "**!market [fish]** Browse listings\n**!market list <catchId> <price>** List a catch\n**!market buy <listingId>** Buy a listing\n**!market cancel <listingId>** Withdraw a listing\n**!market prices <fish>** Price trends\n**!market history** Transaction history", inline: false },
+      { name: "05  ·  PLAYER TRADES", value: "**!trade @user** Start a trade\n**!trade add <tradeId> <catchId>** Add a fish\n**!trade coins <tradeId> <amount>** Offer coins\n**!trade view <tradeId>** Review offers\n**!trade confirm <tradeId>** Confirm\n**!trade cancel <tradeId>** Cancel", inline: false }
+    )
+    .setFooter({ text: "Trades require both players to confirm • Listed and offered catches are safely locked" });
 }
 
 module.exports = {
