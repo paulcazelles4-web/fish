@@ -3,6 +3,7 @@ require("dotenv").config();
 const { Client, GatewayIntentBits, Partials } = require("discord.js");
 const { initDatabase } = require("./db");
 const game = require("./game");
+const trading = require("./trading");
 
 const token = process.env.DISCORD_TOKEN;
 const prefix = process.env.BOT_PREFIX || "!";
@@ -35,12 +36,17 @@ const commands = new Map([
   ["profile", message => game.profileCommand(message, message.mentions.users.first())],
   ["leaderboard", message => game.leaderboardCommand(message)],
   ["collection", message => game.collectionCommand(message)],
+  ["market", (message, args) => trading.marketCommand(message, args)],
+  ["trade", (message, args) => trading.tradeCommand(message, args)],
   ["help", message => message.reply({ embeds: [game.helpEmbed()] })]
 ]);
 
 client.once("ready", () => {
   console.log("🐟 " + client.user.tag + " is online. Prefix: " + prefix);
   client.user.setActivity("the ocean | !help");
+  const timer = setInterval(() => trading.expireTrades().catch(error =>
+    console.error("Trading expiry worker failed:", error)), 60_000);
+  timer.unref?.();
 });
 
 client.on("messageCreate", async message => {
@@ -59,7 +65,7 @@ client.on("messageCreate", async message => {
     await command(message, args);
   } catch (error) {
     console.error("Command !" + commandName + " failed:", error);
-    await message.reply("⚠️ Something went wrong while running that command. Please try again later.");
+    await message.reply("⚠️ " + (error.message || "Something went wrong. Please try again later."));
   }
 });
 
